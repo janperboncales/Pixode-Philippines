@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="https://i.imgur.com/uYhqLWT.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIXODE Philippines</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: 'Poppins', sans-serif;
+        /* Security: Prevent text selection */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      
+      /* Exception: Allow text selection in inputs so forms work */
+      input, textarea {
+        -webkit-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+        user-select: text;
+      }
+
+      /* Security: Prevent image dragging */
+      img {
+        -webkit-user-drag: none;
+        user-drag: none;
+        pointer-events: none; /* Extra layer to prevent interaction outside of links */
+      }
+      
+      .font-montserrat {
+        font-family: 'Montserrat', sans-serif;
+      }
+
+      /* Custom Scrollbar for Smooth/Clean Look */
+      ::-webkit-scrollbar {
+        width: 8px; /* Thinner for cleaner look */
+      }
+      ::-webkit-scrollbar-track {
+        background: #0a031a; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #4c1d95; 
+        border-radius: 4px;
+        /* Removed border for smoother look */
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #6d28d9; 
+      }
+
+      @keyframes fade-in-down {
+          0% { opacity: 0; transform: translateY(-20px); }
+          100% { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes fade-in-up {
+          0% { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in-down {
+          animation: fade-in-down 0.8s ease-out forwards;
+      }
+      .animate-fade-in-up {
+          animation: fade-in-up 0.8s ease-out forwards;
+      }
+      /* Marquee Animation */
+      @keyframes marquee {
+        0% { transform: translateX(0%); }
+        100% { transform: translateX(-50%); }
+      }
+      .animate-marquee {
+        animation: marquee 40s linear infinite;
+      }
+      .marquee-container:hover .animate-marquee {
+        animation-play-state: paused;
+      }
+      /* Animated Text Lights */
+      @keyframes text-lights {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+      }
+      .animate-text-lights {
+          background-image: linear-gradient(to right, #a855f7, #ec4899, #3b82f6, #a855f7);
+          background-size: 200% auto;
+          color: #fff;
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: text-lights 4s linear infinite;
+      }
+      /* Animated Button Background Lights */
+      @keyframes background-lights {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+      }
+      .animate-background-lights {
+          background-image: linear-gradient(to right, #9333ea, #4f46e5, #ec4899, #9333ea);
+          background-size: 200% auto;
+          transition: background-position 0.5s;
+      }
+      .animate-background-lights:hover {
+          background-position: right center;
+      }
+      .animate-blob {
+        animation: blob 7s infinite;
+      }
+      @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0px, 0px) scale(1); }
+      }
+      .animation-delay-2000 {
+        animation-delay: 2s;
+      }
+      .animation-delay-4000 {
+        animation-delay: 4s;
+      }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.5",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "url": "https://aistudiocdn.com/url@^0.11.4"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-[#0a031a] text-white overflow-x-hidden" oncontextmenu="return false" ondragstart="return false">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
