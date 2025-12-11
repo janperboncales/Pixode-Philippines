@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -26,12 +27,11 @@ const LoginPage: React.FC = () => {
     useEffect(() => {
         const checkStatus = async () => {
             // Check if Supabase keys are default/placeholder
-            // @ts-ignore - Accessing internal property for validation
+            // @ts-ignore
             const currentUrl = supabase.supabaseUrl;
-            // @ts-ignore - Accessing internal property for validation
+            // @ts-ignore
             const currentKey = supabase.supabaseKey;
             
-            // Explicitly check for our new placeholder strings
             if (!currentUrl || currentUrl.includes('YOUR_SUPABASE_URL_HERE') || !currentKey || currentKey.includes('YOUR_SUPABASE_ANON_KEY_HERE')) {
                 setIsConfigured(false);
                 setCheckingSetup(false);
@@ -47,30 +47,22 @@ const LoginPage: React.FC = () => {
                 }
 
                 // 2. Check if any CEO exists in the profiles table
-                // We use head: true to just get the count/existence without fetching data
                 const { count, error: dbError } = await supabase
                     .from('profiles')
                     .select('*', { count: 'exact', head: true })
                     .eq('role', 'CEO');
 
-                // If table doesn't exist yet (SQL not run), this might error, which we catch
                 if (dbError && dbError.message.includes('relation "public.profiles" does not exist')) {
-                    // This is expected if the initial schema hasn't been applied
                     console.warn("Profiles table does not exist, assuming setup mode required.");
                     setIsSetupMode(true);
                 } else if (dbError) {
                     console.error("Error checking for CEO profiles:", dbError.message);
-                    // Critical error, might not be able to proceed without setup or fix
-                    setError(`Critical error during setup check: ${dbError.message}`);
-                    setIsConfigured(false); // Consider it unconfigured if basic checks fail
+                    // Don't block login if DB check fails, just let them try to sign in
                 } else if (count === 0) {
                     setIsSetupMode(true);
                 }
             } catch (err) {
-                console.warn("System check failed. Supabase might not be fully configured yet.", (err as Error).message);
-                // Also catch network errors for general setup failure
-                setError(`Could not connect to Supabase: ${(err as Error).message}. Please check your network and supabaseClient.ts.`);
-                setIsConfigured(false);
+                console.warn("System check failed.", (err as Error).message);
             } finally {
                 setCheckingSetup(false);
             }
@@ -102,7 +94,7 @@ const LoginPage: React.FC = () => {
                     throw new Error("Invalid email or password.");
                 }
                 if (error.message.includes("Email not confirmed")) {
-                    throw new Error("Please verify your email address. Check your inbox (and spam folder) for the confirmation link.");
+                    throw new Error("Please verify your email address.");
                 }
                 throw error;
             }
@@ -117,9 +109,10 @@ const LoginPage: React.FC = () => {
 
                 if (!existingProfile) {
                     // Self-heal: Create missing profile using available metadata
+                    // NOTE: DB uses 'name' column, not 'full_name' based on logs
                     await supabase.from('profiles').upsert({
                         id: data.session.user.id,
-                        full_name: data.session.user.user_metadata.full_name || 'User',
+                        name: data.session.user.user_metadata.full_name || data.session.user.user_metadata.name || 'User',
                         role: data.session.user.user_metadata.role || 'Employee',
                         email: data.session.user.email
                     });
@@ -129,13 +122,7 @@ const LoginPage: React.FC = () => {
             }
         } catch (err: any) {
             console.error("Login error:", err.message);
-            let msg = err.message || 'Authentication failed.';
-            if (err instanceof TypeError && err.message === 'Failed to fetch') {
-                msg = "Connection failed. Please ensure your Supabase URL and Key in supabaseClient.ts are correct and accessible.";
-            } else if (msg.includes("Failed to fetch")) { // General "Failed to fetch" from Supabase library
-                msg = "Connection failed. Please check your network and Supabase URL/Key in supabaseClient.ts.";
-            }
-            setError(msg);
+            setError(err.message || 'Authentication failed.');
         } finally {
             setIsLoading(false);
         }
@@ -147,14 +134,13 @@ const LoginPage: React.FC = () => {
         setError('');
 
         try {
-            // Create the first user with CEO role in metadata
             const { data, error } = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
                 options: {
                     data: {
-                        full_name: formData.fullName,
-                        role: 'CEO' // Explicitly set as CEO
+                        full_name: formData.fullName, // Stored in Auth Metadata
+                        role: 'CEO'
                     }
                 }
             });
@@ -162,10 +148,10 @@ const LoginPage: React.FC = () => {
             if (error) throw error;
 
             if (data.session) {
-                // Manually insert profile to ensure it exists immediately (robust against missing triggers)
+                // Manually insert profile (using 'name' column)
                 await supabase.from('profiles').upsert({
                     id: data.session.user.id,
-                    full_name: formData.fullName,
+                    name: formData.fullName,
                     role: 'CEO',
                     email: formData.email
                 });
@@ -173,27 +159,19 @@ const LoginPage: React.FC = () => {
                 alert("System Owner created successfully! You are now logged in.");
                 navigate('/dashboard');
             } else if (data.user) {
-                // If email confirmation is enabled in Supabase
                 setError("Account created! PLEASE CHECK YOUR EMAIL to confirm your account before logging in.");
-                setIsSetupMode(false); // Switch back to login
+                setIsSetupMode(false);
             }
         } catch (err: any) {
             console.error("Setup error:", err.message);
-            let msg = err.message || "Failed to create owner account.";
-            if (err instanceof TypeError && err.message === 'Failed to fetch') {
-                msg = "Connection failed during setup. Please ensure your Supabase URL and Key in supabaseClient.ts are correct and accessible.";
-            } else if (msg.includes("Failed to fetch")) { // General "Failed to fetch" from Supabase library
-                msg = "Connection failed during setup. Please check your network and Supabase URL/Key in supabaseClient.ts.";
-            }
-            setError(msg);
+            setError(err.message || "Failed to create owner account.");
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleGoBack = () => {
-        // If there's enough history to go back, use navigate(-1), otherwise go to home
-        if (window.history.length > 2) { // 2 typically means initial load + current page
+        if (window.history.length > 2) {
             navigate(-1);
         } else {
             navigate('/');
@@ -204,22 +182,10 @@ const LoginPage: React.FC = () => {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#0a031a] px-4">
                 <div className="w-full max-w-lg bg-red-900/10 border border-red-500/30 rounded-2xl p-8 text-center backdrop-blur-md">
-                    <div className="mx-auto w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-6">
-                        <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
                     <h2 className="text-2xl font-bold text-white mb-4">Configuration Required</h2>
                     <p className="text-gray-300 mb-6">
-                        The application is not connected to a backend yet. You must update <code className="bg-black/40 px-2 py-1 rounded text-red-300">supabaseClient.ts</code> with your project credentials.
+                        Supabase credentials are missing. Please update <code className="bg-black/40 px-2 py-1 rounded text-red-300">supabaseClient.ts</code>.
                     </p>
-                    <ol className="text-left text-sm text-gray-400 space-y-2 bg-black/20 p-4 rounded-lg">
-                        <li>1. Go to <a href="https://supabase.com" target="_blank" className="text-purple-400 hover:underline">Supabase.com</a> and create a project.</li>
-                        <li>2. Get your <strong>Project URL</strong> and <strong>Anon Key</strong>.</li>
-                        <li>3. Open <strong>supabaseClient.ts</strong> in the file editor.</li>
-                        <li>4. Replace the placeholder strings with your actual keys.</li>
-                        <li>5. Run the provided SQL script in your Supabase SQL Editor.</li>
-                    </ol>
                     <div className="mt-8">
                         <Link to="/" className="text-white bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg transition-colors">
                             Return Home
@@ -240,22 +206,20 @@ const LoginPage: React.FC = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#0a031a] px-4">
-            <div className="w-full max-w-md bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl shadow-purple-500/20 text-center relative"> {/* Added relative here */}
-                {/* Back Button */}
+            <div className="w-full max-w-md bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl shadow-purple-500/20 text-centerPv relative">
                 <button
                     onClick={handleGoBack}
                     className="absolute top-4 left-4 p-2 bg-white/5 border border-white/10 text-gray-300 rounded-full hover:bg-white/10 transition-colors flex items-center group"
                     aria-label="Go back"
                 >
                     <BackIcon />
-                    <span className="ml-2 text-sm hidden group-hover:inline-block">Back</span>
                 </button>
 
-                <h1 className="text-4xl font-extrabold font-montserrat animate-text-lights mb-6 mt-8"> {/* Adjusted margin for button */}
+                <h1 className="text-4xl font-extrabold font-montserrat animate-text-lights mb-6 mt-8">
                     {isSetupMode ? 'System Setup' : 'Welcome Back'}
                 </h1>
                 <p className="text-gray-400 mb-8">
-                    {isSetupMode ? 'Create the first owner account for your dashboard.' : 'Sign in to access your dashboard.'}
+                    {isSetupMode ? 'Create the first owner account.' : 'Sign in to access dashboard.'}
                 </p>
 
                 {error && (
@@ -273,7 +237,7 @@ const LoginPage: React.FC = () => {
                                 placeholder="Full Name (CEO)"
                                 value={formData.fullName}
                                 onChange={handleChange}
-                                className="w-full bg-black/20 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:ring-purple-500 focus:border-purple-500 transition"
+                                className="w-full bg-black/20 border border-white/20 rounded-lg px-4 py-3 text-white focus:ring-purple-500 focus:border-purple-500 transition"
                                 required
                             />
                         </div>
@@ -285,7 +249,7 @@ const LoginPage: React.FC = () => {
                             placeholder="Email"
                             value={formData.email}
                             onChange={handleChange}
-                                className="w-full bg-black/20 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:ring-purple-500 focus:border-purple-500 transition"
+                                className="w-full bg-black/20 border border-white/20 rounded-lg px-4 py-3 text-white focus:ring-purple-500 focus:border-purple-500 transition"
                             required
                         />
                     </div>
@@ -296,7 +260,7 @@ const LoginPage: React.FC = () => {
                             placeholder="Password"
                             value={formData.password}
                             onChange={handleChange}
-                                className="w-full bg-black/20 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:ring-purple-500 focus:border-purple-500 transition"
+                                className="w-full bg-black/20 border border-white/20 rounded-lg px-4 py-3 text-white focus:ring-purple-500 focus:border-purple-500 transition"
                             required
                         />
                     </div>
