@@ -57,7 +57,7 @@ interface ChatSession {
 
 interface UserProfile {
     id: string;
-    full_name: string;
+    name: string; // Changed from full_name to match DB
     email: string;
     role: 'CEO' | 'Co-Founder' | 'Admin' | 'Employee';
 }
@@ -473,7 +473,8 @@ const LiveSupportChat: React.FC<LiveSupportChatProps> = ({ isDashboardContext = 
             subscribeToChatChanges(chatId);
             
             // System message announcing agent
-            await sendMessage(`${currentUserProfile.full_name} has joined the chat.`, chatId, 'system', null);
+            // Use 'name' instead of 'full_name'
+            await sendMessage(`${currentUserProfile.name} has joined the chat.`, chatId, 'system', null);
         }
     };
 
